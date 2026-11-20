@@ -1,0 +1,30 @@
+# JaneSec — self-hosting. One public image: Postgres (pgvector), the API, the
+# Next.js war room and nginx in a single container, behind one port (8080).
+#
+#   JWT_SIGNING_KEY=$(openssl rand -hex 32) docker compose up -d
+#   open http://localhost:8080
+#
+# The application code is closed-source; only the image is public. See README.md.
+services:
+  janesec:
+    image: ghcr.io/goodnessibeh/janesec:latest
+    restart: unless-stopped
+    environment:
+      # Required for auth — set a strong random value (no insecure fallback).
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:-dev-only-change-me}
+      # Fernet key encrypting secrets at rest. Empty = one is generated and
+      # persisted on the state volume (fine for a single node). Set it, shared,
+      # across replicas.
+      CREDENTIALS_KEY: ${CREDENTIALS_KEY:-}
+      # The bundled Postgres is used by default. To use an external Postgres
+      # instead, set this (the bundled one then just idles):
+      # JANESEC_DATABASE_URL: postgresql+asyncpg://user:pass@host:5432/janesec
+    volumes:
+      - janesec-db:/var/lib/postgresql/data   # Postgres data (persists)
+      - janesec-state:/var/lib/janesec        # evidence, vault, ingested trees
+    ports:
+      - "${PORT:-8080}:8080"
+
+volumes:
+  janesec-db:
+  janesec-state:
